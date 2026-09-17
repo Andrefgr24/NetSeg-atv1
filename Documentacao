@@ -1,0 +1,33 @@
+1. Configuração de Rede Básica
+
+ip address add ...: Atribui os IPs estáticos para as três interfaces do firewall (eth0 para Borda, eth1 para LAN, eth2 para DMZ).
+
+ip link set ... up: Ativa administrativamente as interfaces de rede.
+
+ip route add default ...: Define a rota padrão, enviando todo o tráfego que vai para fora da rede interna para o IP do roteador de borda (r0).
+
+2. Limpeza e Políticas Padrão (Default Deny)
+
+iptables -F: Limpa (flush) qualquer regra pré-existente no firewall para evitar conflitos.
+
+iptables -P ... DROP: Define a política padrão de todas as cadeias principais (INPUT, FORWARD, OUTPUT) para descartar pacotes. Nada entra, sai ou é roteado a menos que seja explicitamente permitido.
+
+3. Tratamento de Conexões de Retorno (Filtragem Stateful)
+
+iptables -A FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT: Garante que as respostas para conexões legitimamente iniciadas de dentro da rede (como o acesso a um site) possam voltar, analisando o estado da conexão.
+
+4. Regras de Acesso Externo
+
+iptables -A FORWARD -i eth1 -o eth0 -s 192.168.10.0/24 -j ACCEPT: Libera os hosts originados na LAN (eth1) para acessarem a Internet através da interface externa (eth0).
+
+5. Regras de Acesso à DMZ (Menor Privilégio)
+
+... -d 172.16.10.80 -j ACCEPT: Permite que a LAN acesse o Servidor Web hospedado na DMZ.
+
+... -d 172.16.10.53 -j ACCEPT: Permite que a LAN acesse o Servidor DNS hospedado na DMZ.
+
+... -d 172.16.10.80 -p tcp --dport 80 -j ACCEPT: Libera requisições vindas da Internet (eth0) exclusivamente para a porta TCP 80 do Servidor Web na DMZ, bloqueando acesso a outras portas de gerenciamento.
+
+6. Mascaramento (NAT)
+
+iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE: Realiza a tradução de endereços (NAT) para que os pacotes originados nas redes privadas (LAN e DMZ) recebam o IP externo do firewall ao irem para a Internet, mascarando a topologia interna.
